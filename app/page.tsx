@@ -33,11 +33,14 @@ export default function Page() {
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {memories.map(m => (
-          <Link key={m.id} href={`/memory/${m.id}`}>
-            <a>
-              <MemoryCard title={m.title} description={m.description} src={m.src} />
-            </a>
-          </Link>
+          <Link
+  key={m.id}
+  href={`/memory/${m.id}`}
+  className="block hover:scale-[1.02] transition-transform"
+>
+  <MemoryCard title={m.title} description={m.description} src={m.src} />
+</Link>
+
         ))}
       </section>
     </>
