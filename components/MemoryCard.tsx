@@ -1,3 +1,4 @@
+"use client";
 export default function MemoryCard({ title, description, src }: { title: string; description: string; src: string }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow hover:shadow-lg transition">

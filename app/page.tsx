@@ -1,29 +1,17 @@
-import Link from 'next/link'
-import MemoryCard from '../components/MemoryCard'
+import MemoryCard from "../components/MemoryCard"
+import { supabase } from "../lib/supabaseClient"
 
-// Mock data
-const memories = [
-  {
-    id: '1',
-    title: 'Sunset at the Lake',
-    description: 'A beautiful sunset we watched together.',
-    src: '/images/sunset.svg'
-  },
-  {
-    id: '2',
-    title: 'Graduation Day',
-    description: 'Celebrating a milestone.',
-    src: '/images/graduation.svg'
-  },
-  {
-    id: '3',
-    title: 'Family Picnic',
-    description: 'A sunny afternoon with family.',
-    src: '/images/picnic.svg'
+export default async function Page() {
+  const { data: memories, error } = await supabase
+    .from("memories")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error(error)
+    return <p className="text-red-500">Gagal memuat data dari Supabase.</p>
   }
-]
 
-export default function Page() {
   return (
     <>
       <header className="mb-6">
@@ -32,15 +20,13 @@ export default function Page() {
       </header>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {memories.map(m => (
-          <Link
-  key={m.id}
-  href={`/memory/${m.id}`}
-  className="block hover:scale-[1.02] transition-transform"
->
-  <MemoryCard title={m.title} description={m.description} src={m.src} />
-</Link>
-
+        {memories?.map((m) => (
+          <MemoryCard
+            key={m.id}
+            title={m.title}
+            description={m.description}
+            src={m.image_url}
+          />
         ))}
       </section>
     </>

@@ -1,3 +1,4 @@
+"use client";
 export default function Navbar() {
   return (
     <nav className="bg-white border-b">

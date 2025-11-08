@@ -12,10 +12,11 @@ const sample = {
 }
 
 export default function MemoryPage({ params }: { params: { id: string } }) {
-  // For now show the sample regardless of id.
   return (
     <div>
-      <Link href="/"><a className="text-sm text-blue-600 hover:underline">&larr; Back to gallery</a></Link>
+      <Link href="/" className="text-sm text-blue-600 hover:underline">
+        &larr; Back to gallery
+      </Link>
 
       <article className="mt-4 bg-white p-6 rounded-2xl shadow">
         <img src={sample.src} alt={sample.title} className="w-full h-64 object-cover rounded-lg" />
