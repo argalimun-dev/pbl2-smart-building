@@ -1,34 +1,29 @@
-import MemoryCard from "../components/MemoryCard"
-import { supabase } from "../lib/supabaseClient"
+"use client";
+import Link from "next/link";
 
-export default async function Page() {
-  const { data: memories, error } = await supabase
-    .from("memories")
-    .select("*")
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error(error)
-    return <p className="text-red-500">Gagal memuat data dari Supabase.</p>
-  }
-
+export default function HomePage() {
   return (
-    <>
-      <header className="mb-6">
-        <h1 className="text-3xl font-semibold">Memory Wall</h1>
-        <p className="text-gray-600 mt-1">Simpan dan tampilkan kenangan Anda.</p>
-      </header>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 via-gray-950 to-black text-gray-100 px-6 text-center">
+      {/* Judul utama */}
+      <h1 className="text-5xl md:text-7xl font-extrabold mb-8 bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text drop-shadow-2xl tracking-tight leading-[1.15] pb-3">
+  Selamat Datang di Smart Memory Wall
+</h1>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {memories?.map((m) => (
-          <MemoryCard
-            key={m.id}
-            title={m.title}
-            description={m.description}
-            src={m.image_url}
-          />
-        ))}
-      </section>
-    </>
-  )
+      {/* Deskripsi singkat */}
+      <p className="text-gray-400 text-lg max-w-2xl mb-10 leading-relaxed">
+        Platform dokumentasi untuk warga{" "}
+        <span className="text-blue-400">PBL 2 Smart Building</span>.
+        <br />
+        Simpan dan bagikan momen berharga dalam perjalanan kalian ✨
+      </p>
+
+      {/* Tombol ke Memory Wall */}
+      <Link
+        href="/memory"
+        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl text-lg font-medium transition transform hover:scale-105 shadow-lg"
+      >
+        🚀 Masuk ke Memory Wall
+      </Link>
+    </main>
+  );
 }

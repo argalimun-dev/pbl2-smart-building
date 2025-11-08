@@ -1,68 +1,116 @@
-"use client"
-import { useState, useEffect } from "react"
-import { supabase } from "../lib/supabaseClient"
+"use client";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
-type Comment = { id: string; author: string; text: string; created_at: string }
+interface Comment {
+  id: string;
+  text: string;
+  created_at: string;
+  memory_id: string;
+  commenter?: string;
+}
 
-export default function CommentSection({ memoryId }: { memoryId: string }) {
-  const [comments, setComments] = useState<Comment[]>([])
-  const [value, setValue] = useState("")
+interface CommentSectionProps {
+  memoryId: string;
+}
+
+export default function CommentSection({ memoryId }: CommentSectionProps) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [commenter, setCommenter] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchComments()
-  }, [memoryId])
+    fetchComments();
+  }, [memoryId]);
 
-  async function fetchComments() {
+  const fetchComments = async () => {
     const { data, error } = await supabase
       .from("comments")
       .select("*")
       .eq("memory_id", memoryId)
-      .order("created_at", { ascending: false })
-    if (!error && data) setComments(data)
-  }
+      .order("created_at", { ascending: true });
 
-  async function addComment(e: React.FormEvent) {
-    e.preventDefault()
-    if (!value.trim()) return
+    if (error) console.error("Gagal mengambil komentar:", error);
+    else setComments(data || []);
+  };
 
-    const { error } = await supabase.from("comments").insert({
-      memory_id: memoryId,
-      author: "Anon",
-      text: value.trim(),
-    })
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
 
-    if (!error) {
-      setValue("")
-      fetchComments()
+    setLoading(true);
+    const { error } = await supabase.from("comments").insert([
+      {
+        text: newComment.trim(),
+        memory_id: memoryId,
+        commenter: commenter.trim() || "Anonim",
+      },
+    ]);
+
+    if (error) console.error("Gagal menambahkan komentar:", error);
+    else {
+      setNewComment("");
+      setCommenter("");
+      fetchComments();
     }
-  }
+    setLoading(false);
+  };
 
   return (
-    <section className="bg-white p-4 rounded-2xl shadow">
-      <h4 className="font-semibold">Komentar</h4>
+    <div className="mt-10 bg-gray-800 p-6 rounded-xl shadow-inner border border-gray-700">
+      <h2 className="text-lg font-semibold text-white mb-4">Komentar</h2>
 
-      <form onSubmit={addComment} className="mt-3 flex gap-2">
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Tulis komentar..."
-          className="flex-1 border rounded px-3 py-2"
-        />
-        <button className="px-4 py-2 bg-blue-600 text-white rounded">Kirim</button>
-      </form>
-
-      <ul className="mt-4 space-y-3">
-        {comments.map((c) => (
-          <li key={c.id} className="border rounded px-3 py-2">
-            <div className="text-sm font-medium">{c.author}</div>
-            <div className="text-sm text-gray-600">{c.text}</div>
-            <div className="text-xs text-gray-400">
-              {new Date(c.created_at).toLocaleString()}
+      {comments.length === 0 ? (
+        <p className="text-gray-500 italic">Belum ada komentar 😅</p>
+      ) : (
+        <div className="space-y-3 mb-4">
+          {comments.map((c) => (
+            <div
+              key={c.id}
+              className="bg-gray-900 border border-gray-700 p-3 rounded-md shadow-sm"
+            >
+              <p className="text-gray-200">{c.text}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                oleh <span className="font-medium">{c.commenter || "Anonim"}</span> ·{" "}
+                {new Date(c.created_at).toLocaleString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
             </div>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
+          ))}
+        </div>
+      )}
 
+      <form onSubmit={handleAddComment} className="space-y-3">
+        <input
+          type="text"
+          placeholder="Nama kamu..."
+          value={commenter}
+          onChange={(e) => setCommenter(e.target.value)}
+          className="w-full border border-gray-700 bg-gray-900 text-gray-100 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Tulis komentar..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            className="flex-1 border border-gray-700 bg-gray-900 text-gray-100 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition disabled:opacity-50"
+          >
+            {loading ? "Mengirim..." : "Kirim"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

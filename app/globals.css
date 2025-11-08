@@ -8,8 +8,16 @@ body {
   margin: 0;
   padding: 0;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
+
+  /* 🌙 Dark theme background dan teks */
+  background: linear-gradient(to bottom, #0f172a, #020617);
+  color: #e2e8f0;
+
+  min-height: 100vh;
+
+  /* Haluskan font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -19,4 +27,32 @@ a {
 
 * {
   box-sizing: border-box;
+}
+
+/* ✨ Animasi Zoom untuk tampilan gambar */
+@keyframes zoomIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-zoomIn {
+  animation: zoomIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
 }
