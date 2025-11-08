@@ -22,3 +22,4 @@ Template Next.js + Tailwind project for a Memory Wall app.
 
 ## Notes
 - This is a starter template. Comments are mocked in memory. Integrate your backend or supabase/firebase for persistence.
+"# pbl2-smart-building" 
