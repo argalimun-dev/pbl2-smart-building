@@ -121,7 +121,7 @@ export default function NewMemoryPage() {
             </label>
             <input
               type="text"
-              placeholder="Masukkan nama Anda"
+              placeholder="Anda ingin disebut apa"
               value={uploader}
               onChange={(e) => setUploader(e.target.value)}
               className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
