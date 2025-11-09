@@ -46,11 +46,11 @@ export default function MemoryPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-950 to-black text-gray-100 flex flex-col items-center">
       {/* Header */}
-      <div className="w-full text-center pt-8 pb-6 bg-gray-900/40 backdrop-blur-sm">
-        <h1 className="text-5xl font-extrabold text-white mb-2 drop-shadow-md">
-          Memory Wall
+      <div className="w-full text-center pt-2 pb-10 bg-gray-900/40 backdrop-blur-sm -mt-2">
+        <h1 className="text-7xl font-extrabold text-white mb-5 drop-shadow-lg tracking-tight">
+          Smart Memory Wall
         </h1>
-        <p className="text-gray-400 text-lg">Kumpulan kenangan berharga Kalian 📸</p>
+        <p className="text-gray-400 text-xl">Kumpulan kenangan berharga Kalian 📸</p>
       </div>
 
       {/* Grid Foto */}
