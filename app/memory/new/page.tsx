@@ -76,7 +76,7 @@ export default function NewMemoryPage() {
             </label>
             <input
               type="text"
-              placeholder="Contoh: Sunset di pantai"
+              placeholder="Contoh: Kesetrum"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
@@ -141,7 +141,7 @@ export default function NewMemoryPage() {
         {/* Tombol Kembali */}
         <div className="text-center mt-6">
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/memory")}
             className="text-sm text-gray-600 hover:text-gray-800 underline"
           >
             ← Kembali ke Memory Wall
