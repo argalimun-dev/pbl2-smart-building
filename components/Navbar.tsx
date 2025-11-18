@@ -15,7 +15,7 @@ export default function Navbar() {
             href="/"
             className="font-semibold text-lg text-slate-100 hover:text-blue-400 transition"
           >
-            PBL 2 Smart Building
+            CV. Bangunan Cerdas Indonesia
           </Link>
           <div className="text-sm text-gray-400">
             Pemasangan Sistem Integrasi Bangunan Cerdas
@@ -36,7 +36,7 @@ export default function Navbar() {
             href="/memory/new"
             className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-md hover:bg-blue-500 hover:shadow-lg transition-all duration-200"
           >
-            + Tambah Memory
+            + Tambah Project
           </Link>
           <Link
             href="/about"
@@ -56,7 +56,7 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
               className="text-white bg-blue-600 px-4 py-2 rounded-xl text-center hover:bg-blue-500 transition-all"
             >
-              + Tambah Memory
+              + Tambah Project
             </Link>
             <Link
               href="/about"

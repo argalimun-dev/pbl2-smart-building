@@ -2,8 +2,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 
 export const metadata = {
-  title: "PBL 2 Smart Building",
-  description: "Smart Memory Wall untuk menyimpan kenangan berharga Anda",
+  title: "CV. Bangunan Cerdas Indonesia",
+  description: "Smart Project Wall untuk menyimpan Project berharga Anda",
 };
 
 export default function RootLayout({
