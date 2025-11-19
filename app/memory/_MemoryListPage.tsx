@@ -50,7 +50,7 @@ export default function MemoryPage() {
         <h1 className="text-7xl font-extrabold text-white mb-5 drop-shadow-lg tracking-tight">
           Smart Project Wall
         </h1>
-        <p className="text-gray-400 text-xl">Kumpulan Project berharga Kalian 📸</p>
+        <p className="text-gray-400 text-xl">Kumpulan Project berharga Kami 📸</p>
       </div>
 
       {/* Grid Foto */}

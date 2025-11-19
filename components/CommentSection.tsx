@@ -1,139 +1,211 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { X } from "lucide-react";
 
 interface Comment {
   id: string;
   text: string;
   created_at: string;
   memory_id: string;
-  commenter?: string;
+  commenter?: string | null;
 }
 
-interface CommentSectionProps {
+export interface CommentSectionRef {
+  openModal: () => void;
+}
+
+interface Props {
   memoryId: string;
+  onNewComment?: (c: Comment) => void;
 }
 
-export default function CommentSection({ memoryId }: CommentSectionProps) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [commenter, setCommenter] = useState("");
-  const [loading, setLoading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+const CommentSection = forwardRef<CommentSectionRef, Props>(
+  ({ memoryId, onNewComment }, ref) => {
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [loadingComments, setLoadingComments] = useState(true);
 
-  // Ambil komentar saat memoryId berubah
-  useEffect(() => {
-    fetchComments();
-  }, [memoryId]);
+    // modal states
+    const [showModal, setShowModal] = useState(false);
+    const [name, setName] = useState("");
+    const [text, setText] = useState("");
+    const [sending, setSending] = useState(false);
 
-  const fetchComments = async () => {
-    const { data, error } = await supabase
-      .from("comments")
-      .select("*")
-      .eq("memory_id", memoryId)
-      .order("created_at", { ascending: true });
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-    if (error) console.error("Gagal mengambil komentar:", error);
-    else setComments(data || []);
-  };
+    // expose function to parent
+    useImperativeHandle(ref, () => ({
+      openModal: () => setShowModal(true),
+    }));
 
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return;
-
-    setLoading(true);
-    const { error } = await supabase.from("comments").insert([
-      {
-        text: newComment.trim(),
-        memory_id: memoryId,
-        commenter: commenter.trim() || "Anonim",
-      },
-    ]);
-
-    if (error) console.error("Gagal menambahkan komentar:", error);
-    else {
-      setNewComment("");
+    // fetch comments
+    useEffect(() => {
+      if (!memoryId) return;
       fetchComments();
-    }
-    setLoading(false);
-  };
+    }, [memoryId]);
 
-  // Fitur kirim komentar pakai Enter, Shift+Enter untuk baris baru
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleAddComment();
-    }
-  };
+    const fetchComments = async () => {
+      setLoadingComments(true);
+      try {
+        const { data, error } = await supabase
+          .from("comments")
+          .select("*")
+          .eq("memory_id", memoryId)
+          .order("created_at", { ascending: true });
 
-  // Auto-expand textarea saat mengetik
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [newComment]);
+        if (!error) setComments(data || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingComments(false);
+      }
+    };
 
-  return (
-    <div className="mt-10 bg-gray-800 p-6 rounded-xl shadow-inner border border-gray-700">
-      <h2 className="text-lg font-semibold text-white mb-4">Komentar</h2>
+    // autosize textarea
+    useEffect(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    }, [text]);
 
-      {/* Daftar komentar */}
-      {comments.length === 0 ? (
-        <p className="text-gray-500 italic">Belum ada komentar 😅</p>
-      ) : (
-        <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-2">
-          {comments.map((c) => (
-            <div
-              key={c.id}
-              className="bg-gray-900 border border-gray-700 p-3 rounded-md shadow-sm"
-            >
-              <p className="text-gray-200 whitespace-pre-line">{c.text}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                oleh <span className="font-medium">{c.commenter || "Anonim"}</span> ·{" "}
-                {new Date(c.created_at).toLocaleString("id-ID", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+    const handleSend = async () => {
+      if (!text.trim()) return alert("Komentar tidak boleh kosong.");
+
+      setSending(true);
+      try {
+        const payload = {
+          memory_id: memoryId,
+          text: text.trim(),
+          commenter: name.trim() || "Anonim",
+          created_at: new Date().toISOString(),
+        };
+
+        const { data, error } = await supabase
+          .from("comments")
+          .insert([payload])
+          .select()
+          .single();
+
+        if (error) {
+          alert("Gagal mengirim komentar.");
+          return;
+        }
+
+        setComments((prev) => [...prev, data as Comment]);
+
+        if (onNewComment) onNewComment(data as Comment);
+
+        setText("");
+        setName("");
+        setShowModal(false);
+      } catch (err) {
+        alert("Terjadi kesalahan saat mengirim komentar.");
+      } finally {
+        setSending(false);
+      }
+    };
+
+    return (
+      <section className="mt-6">
+        {/* Header tanpa tombol Comment */}
+        <h2 className="text-xl font-semibold mb-3">Komentar</h2>
+
+        {/* list komentar */}
+        <div className="space-y-3 mb-4">
+          {loadingComments ? (
+            <p className="text-gray-400">Memuat komentar...</p>
+          ) : comments.length === 0 ? (
+            <p className="text-gray-500 italic">Belum ada komentar 😅</p>
+          ) : (
+            <div className="space-y-3">
+              {comments.map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-gray-800 border border-gray-700 p-3 rounded-md"
+                >
+                  <p className="text-gray-200 whitespace-pre-line">{c.text}</p>
+                  <p className="text-xs text-gray-400 mt-2 flex justify-end">
+                    oleh <span className="font-medium mx-1">{c.commenter || "Anonim"}</span> ·{" "}
+                    {new Date(c.created_at).toLocaleString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
 
-      {/* Form komentar */}
-      <div className="space-y-3">
-        {/* Kolom komentar (textarea) */}
-        <textarea
-          ref={textareaRef}
-          placeholder="Tulis komentar kamu di sini... (Enter untuk kirim, Shift+Enter untuk baris baru)"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={2}
-          className="w-full border border-gray-700 bg-gray-900 text-gray-100 rounded-md p-3 focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-all duration-150"
-        />
+        {/* modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="relative w-full max-w-3xl h-full md:h-auto md:max-h-[80vh] bg-gray-900 rounded-lg border border-gray-700 overflow-auto">
+              {/* header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-1 rounded text-gray-300 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+                <h3 className="text-white text-lg font-semibold">Komentar</h3>
+                <div className="w-6" />
+              </div>
 
-        {/* Kolom nama */}
-        <input
-          type="text"
-          placeholder="Nama kamu..."
-          value={commenter}
-          onChange={(e) => setCommenter(e.target.value)}
-          className="w-full border border-gray-700 bg-gray-900 text-gray-100 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
+              {/* body */}
+              <div className="p-4 space-y-3">
+                <label className="block text-sm text-gray-300">Komentar</label>
+                <textarea
+                  ref={textareaRef}
+                  rows={4}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none"
+                  placeholder="Tulis komentar..."
+                />
 
-        {/* Tombol kirim */}
-        <button
-          onClick={handleAddComment}
-          disabled={loading}
-          className="bg-blue-500 w-full text-white px-4 py-2 rounded-md hover:bg-blue-600 transition disabled:opacity-50"
-        >
-          {loading ? "Mengirim..." : "Kirim"}
-        </button>
-      </div>
-    </div>
-  );
-}
+                <label className="block text-sm text-gray-300">Nama (opsional)</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white"
+                  placeholder="Nama kamu..."
+                />
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      setText("");
+                      setName("");
+                    }}
+                    className="px-3 py-1 border border-gray-600 rounded text-gray-300"
+                  >
+                    Batal
+                  </button>
+
+                  <button
+                    onClick={handleSend}
+                    disabled={sending}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                  >
+                    {sending ? "Mengirim..." : "Kirim"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+);
+
+export default CommentSection;

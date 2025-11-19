@@ -3,96 +3,62 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter, useParams } from "next/navigation";
-import { X, RotateCcw } from "lucide-react";
+import CommentSection, { CommentSectionRef } from "@/components/CommentSection";
+import FullscreenViewer from "@/components/FullscreenViewer";
 
 export default function MemoryDetailPage() {
   const router = useRouter();
   const params = useParams();
   const memoryId = params?.id;
 
+  const commentRef = useRef<CommentSectionRef>(null);
+
   const [memory, setMemory] = useState<any>(null);
-  const [comments, setComments] = useState<any[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [commenter, setCommenter] = useState("");
-  const [secretCode, setSecretCode] = useState("");
-  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Zoom & Fullscreen states
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [secretCode, setSecretCode] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editUploader, setEditUploader] = useState("");
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
-  const [showUI, setShowUI] = useState(true);
-  const hideTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // 🕒 Auto-hide UI (seperti Google Photos)
-  const resetHideTimer = () => {
-    setShowUI(true);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setShowUI(false), 2500);
-  };
-
-  // 🎯 Ambil data memory & komentar
+  // Fetch memory
   useEffect(() => {
     const fetchData = async () => {
-      const { data: memData } = await supabase
+      const { data } = await supabase
         .from("memories")
         .select("*")
         .eq("id", memoryId)
         .single();
 
-      setMemory(memData);
-
-      const { data: comData } = await supabase
-        .from("comments")
-        .select("*")
-        .eq("memory_id", memoryId)
-        .order("created_at", { ascending: false });
-
-      setComments(comData || []);
+      setMemory(data);
       setLoading(false);
     };
 
     if (memoryId) fetchData();
   }, [memoryId]);
 
-  // 💬 Kirim komentar
-  const handleComment = async (e: any) => {
-    e.preventDefault();
-    if (!newComment.trim() || !commenter.trim()) return;
-
-    const { data, error } = await supabase
-      .from("comments")
-      .insert([
-        {
-          memory_id: memoryId,
-          text: newComment.trim(),
-          commenter: commenter.trim(),
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select();
-
-    if (error) return alert("Gagal menambahkan komentar 😔");
-
-    setComments([data[0], ...comments]);
-    setNewComment("");
-    setCommenter("");
-  };
-
-  // 🗑️ Hapus memory (kode tetap sama seperti punyamu)
+  // DELETE HANDLER
   const handleDelete = async () => {
-    if (!secretCode.trim()) return alert("Masukkan kode rahasia dulu!");
+    if (!secretCode.trim()) return alert("Masukkan kode rahasia!");
     if (!memory) return;
 
-    const confirmDelete = confirm("⚠️ Yakin ingin menghapus Project ini?");
-    if (!confirmDelete) return;
+    const check = confirm("⚠️ Yakin ingin menghapus Project ini?");
+    if (!check) return;
 
     try {
       setDeleting(true);
+
       const { data: validCode, error: codeErr } = await supabase
         .from("access_codes")
         .select("*")
@@ -107,81 +73,83 @@ export default function MemoryDetailPage() {
 
       await supabase.from("comments").delete().eq("memory_id", memory.id);
 
-      const imagePath = memory.image_url?.split("/storage/v1/object/public/images/")[1];
-      if (imagePath) await supabase.storage.from("images").remove([imagePath]);
+      const imagePath = memory.image_url?.split(
+        "/storage/v1/object/public/images/"
+      )[1];
+      if (imagePath) {
+        await supabase.storage.from("images").remove([imagePath]);
+      }
 
       await supabase.from("memories").delete().eq("id", memory.id);
 
-      alert("✅ Project berhasil dihapus!");
+      alert("Project berhasil dihapus!");
       router.push("/memory");
       router.refresh();
-    } catch (err) {
+    } catch {
       alert("Terjadi kesalahan saat menghapus!");
     } finally {
       setDeleting(false);
+      setShowDeleteModal(false);
+      setSecretCode("");
     }
   };
 
-  // 🧭 Zoom & Gesture handlers
-  const handleWheel = (e: any) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setZoom((z) => Math.min(Math.max(z + delta, 1), 5));
-    resetHideTimer();
-  };
+  // UPDATE HANDLER
+  const handleUpdateMemory = async () => {
+    if (!memory) return;
+    setEditLoading(true);
 
-  const handleMouseDown = (e: any) => {
-    setIsDragging(true);
-    setStartPos({ x: e.clientX - position.x, y: e.clientY - position.y });
-    resetHideTimer();
-  };
-  const handleMouseMove = (e: any) => {
-    if (!isDragging) return;
-    setPosition({ x: e.clientX - startPos.x, y: e.clientY - startPos.y });
-  };
-  const handleMouseUp = () => setIsDragging(false);
+    try {
+      let imageUrl = memory.image_url;
 
-  const getTouchDistance = (touches: TouchList) => {
-    const [a, b] = touches;
-    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
-  };
+      if (editImageFile) {
+        const oldPath = memory.image_url
+          ?.split("/storage/v1/object/public/images/")[1];
 
-  const handleTouchStart = (e: TouchEvent | any) => {
-    if (e.touches.length === 2) {
-      setLastTouchDist(getTouchDistance(e.touches));
-    } else if (e.touches.length === 1) {
-      setIsDragging(true);
-      setStartPos({
-        x: e.touches[0].clientX - position.x,
-        y: e.touches[0].clientY - position.y,
+        const ext = editImageFile.name.split(".").pop();
+        const fileName = `${memory.id}-${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("images")
+          .upload(fileName, editImageFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/${fileName}`;
+
+        if (oldPath) {
+          await supabase.storage.from("images").remove([oldPath]).catch(() => {});
+        }
+      }
+
+      const { error } = await supabase
+        .from("memories")
+        .update({
+          title: editTitle,
+          description: editDescription,
+          uploader: editUploader,
+          image_url: imageUrl,
+        })
+        .eq("id", memory.id);
+
+      if (error) throw error;
+
+      setMemory({
+        ...memory,
+        title: editTitle,
+        description: editDescription,
+        uploader: editUploader,
+        image_url: imageUrl,
       });
+
+      alert("Berhasil disimpan!");
+      setShowEditModal(false);
+    } catch {
+      alert("Gagal menyimpan perubahan.");
+    } finally {
+      setEditLoading(false);
+      setEditImageFile(null);
     }
-    resetHideTimer();
-  };
-
-  const handleTouchMove = (e: TouchEvent | any) => {
-    if (e.touches.length === 2 && lastTouchDist) {
-      const newDist = getTouchDistance(e.touches);
-      const diff = newDist - lastTouchDist;
-      setZoom((z) => Math.min(Math.max(z + diff / 300, 1), 5));
-      setLastTouchDist(newDist);
-    } else if (e.touches.length === 1 && isDragging) {
-      setPosition({
-        x: e.touches[0].clientX - startPos.x,
-        y: e.touches[0].clientY - startPos.y,
-      });
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    setLastTouchDist(null);
-  };
-
-  const handleReset = () => {
-    setZoom(1);
-    setPosition({ x: 0, y: 0 });
-    resetHideTimer();
   };
 
   if (loading) return <p className="text-white p-6">Loading...</p>;
@@ -189,21 +157,14 @@ export default function MemoryDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 text-white relative">
-      {/* Tombol hapus */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-30">
-        <input
-          type="password"
-          placeholder="Kode rahasia"
-          className="w-40 p-1 text-sm rounded bg-gray-900 border border-gray-700 text-white"
-          value={secretCode}
-          onChange={(e) => setSecretCode(e.target.value)}
-        />
+
+      {/* DELETE BUTTON */}
+      <div className="absolute top-4 right-4 z-30">
         <button
-          onClick={handleDelete}
-          disabled={deleting}
+          onClick={() => setShowDeleteModal(true)}
           className="bg-red-700 hover:bg-red-800 text-xs px-3 py-1 rounded text-white"
         >
-          {deleting ? "..." : "Hapus"}
+          Hapus
         </button>
       </div>
 
@@ -214,7 +175,7 @@ export default function MemoryDetailPage() {
         ← Kembali ke Smart Project Wall
       </button>
 
-      {/* 🖼️ Klik gambar untuk fullscreen */}
+      {/* IMAGE */}
       <img
         src={memory.image_url}
         alt={memory.title}
@@ -222,103 +183,175 @@ export default function MemoryDetailPage() {
         onClick={() => setIsFullscreen(true)}
       />
 
+      {/* TITLE */}
       <h1 className="text-2xl font-bold mb-2">{memory.title}</h1>
+
+      {/* DESCRIPTION */}
       <p className="text-gray-300 mb-2">{memory.description}</p>
-      <p className="text-sm text-gray-500 mb-6">
-        📅 {new Date(memory.created_at).toLocaleDateString()} — 👤{" "}
-        {memory.uploader}
-      </p>
 
-      <hr className="border-gray-700 mb-6" />
+      {/* META */}
+      <div className="flex justify-end mt-3 text-xs text-gray-400">
+        <div className="flex items-center gap-3">
 
-      {/* 💬 Komentar */}
-      <h2 className="text-xl font-semibold mb-3">Komentar</h2>
-      <div className="space-y-3 mb-6">
-        {comments.length ? (
-          comments.map((c, i) => (
-            <div key={i} className="bg-gray-800 border border-gray-700 rounded p-3">
-              <p className="text-sm text-gray-200 whitespace-pre-wrap">{c.text}</p>
-              <p className="text-xs text-gray-500 mt-2 flex justify-end">
-                📅 {new Date(c.created_at).toLocaleDateString()} — 👤{" "}
-                {c.commenter || "Anonim"}
-              </p>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500 text-sm">Belum ada komentar.</p>
-        )}
+          <span>
+            📅{" "}
+            {new Date(memory.created_at).toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+
+          <span className="text-gray-600">•</span>
+
+          <span className="flex items-center gap-1">
+            👤 <span className="text-gray-300 font-medium">{memory.uploader}</span>
+          </span>
+
+          <span className="text-gray-600">•</span>
+
+          {/* EDIT */}
+          <span
+            onClick={() => {
+              setEditTitle(memory.title || "");
+              setEditDescription(memory.description || "");
+              setEditUploader(memory.uploader || "");
+              setEditImageFile(null);
+              setShowEditModal(true);
+            }}
+            className="text-blue-400 cursor-pointer hover:underline"
+          >
+            Sunting
+          </span>
+
+          <span className="text-gray-600">•</span>
+
+          {/* COMMENT */}
+          <span
+            onClick={() => commentRef.current?.openModal()}
+            className="text-blue-400 cursor-pointer hover:underline"
+          >
+            Komentar
+          </span>
+
+        </div>
       </div>
 
-      <hr className="border-gray-700 my-6" />
+      <hr className="border-gray-800 mt-3 mb-0" />
 
-      <form onSubmit={handleComment} className="mb-4 space-y-2">
-        <textarea
-          placeholder="Tulis komentar..."
-          className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-white text-sm"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-        />
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Namamu"
-            className="flex-1 p-2 rounded bg-gray-900 border border-gray-700 text-white text-sm"
-            value={commenter}
-            onChange={(e) => setCommenter(e.target.value)}
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded"
-          >
-            Kirim
-          </button>
-        </div>
-      </form>
+      <CommentSection memoryId={memory.id} ref={commentRef} />
 
-      {/* 🔍 Fullscreen Viewer ala Google Photos */}
+      <hr className="border-gray-700 mb-3" />
+
+      {/* FULLSCREEN VIEWER */}
       {isFullscreen && (
-        <div
-          className="fixed inset-0 bg-black z-50 flex items-center justify-center overflow-hidden"
-          onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={() => setIsDragging(false)}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseMoveCapture={resetHideTimer}
-          onTouchStartCapture={resetHideTimer}
-        >
-          {/* 🔹 Tombol overlay muncul otomatis */}
-          {showUI && (
-            <div className="absolute top-4 right-4 flex gap-3 z-[60] transition-opacity duration-300">
+        <FullscreenViewer
+          imageUrl={memory.image_url}
+          title={memory.title}
+          onClose={() => setIsFullscreen(false)}
+        />
+      )}
+
+      {/* DELETE MODAL */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 w-80">
+
+            <h2 className="text-lg font-bold text-white mb-3">Hapus Project?</h2>
+            <p className="text-sm text-gray-300 mb-3">
+              Masukkan kode rahasia untuk menghapus Project ini.
+            </p>
+
+            <input
+              type="password"
+              placeholder="Kode rahasia"
+              value={secretCode}
+              onChange={(e) => setSecretCode(e.target.value)}
+              className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white mb-3"
+            />
+
+            <div className="flex justify-end gap-2">
               <button
-                onClick={handleReset}
-                className="bg-slate-800/70 hover:bg-slate-700 p-2 rounded-full text-white shadow-lg backdrop-blur-sm"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSecretCode("");
+                }}
+                className="px-3 py-1 border border-gray-600 rounded text-gray-300"
               >
-                <RotateCcw size={18} />
+                Batal
               </button>
+
               <button
-                onClick={() => setIsFullscreen(false)}
-                className="bg-slate-800/70 hover:bg-slate-700 p-2 rounded-full text-white shadow-lg backdrop-blur-sm"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
               >
-                <X size={20} />
+                {deleting ? "Menghapus..." : "Hapus"}
               </button>
             </div>
-          )}
 
-          {/* 🔹 Gambar zoomable */}
-          <img
-            src={memory.image_url}
-            alt={memory.title}
-            draggable={false}
-            style={{
-              transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-              transition: isDragging ? "none" : "transform 0.1s ease-out",
-            }}
-            className="max-w-none object-contain select-none pointer-events-none"
-          />
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 w-96">
+
+            <h2 className="text-lg font-bold text-white mb-3">Edit Project</h2>
+
+            <label className="block text-sm text-gray-300">Judul</label>
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white mb-2"
+            />
+
+            <label className="block text-sm text-gray-300">Deskripsi</label>
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white mb-2"
+              rows={3}
+            />
+
+            <label className="block text-sm text-gray-300">Pengunggah</label>
+            <input
+              value={editUploader}
+              onChange={(e) => setEditUploader(e.target.value)}
+              className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white mb-2"
+            />
+
+            <label className="block text-sm text-gray-300">Gambar Baru (opsional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setEditImageFile(e.target.files?.[0] ?? null)}
+              className="w-full mb-3"
+            />
+
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditImageFile(null);
+                }}
+                className="px-3 py-1 border border-gray-600 rounded text-gray-300"
+              >
+                Batal
+              </button>
+
+              <button
+                onClick={handleUpdateMemory}
+                disabled={editLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+              >
+                {editLoading ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
     </div>

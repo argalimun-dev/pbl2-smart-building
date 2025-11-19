@@ -36,10 +36,10 @@ export default function AboutPage() {
         {/* Navigasi */}
         <div className="text-center mt-10">
           <Link
-            href="/"
+            href="/memory"
             className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl shadow-md transition-all duration-200"
           >
-            ← Kembali ke Beranda
+            ← Kembali ke Smart Project Wall
           </Link>
         </div>
       </div>

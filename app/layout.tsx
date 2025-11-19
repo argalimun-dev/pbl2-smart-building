@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 
 export const metadata = {
   title: "CV. Bangunan Cerdas Indonesia",
-  description: "Smart Project Wall untuk menyimpan Project berharga Anda",
+  description: "Smart Project Wall untuk menyimpan Project berharga Kami",
 };
 
 export default function RootLayout({
