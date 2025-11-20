@@ -1,9 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      'picsum.photos', // untuk gambar contoh dari Picsum
-      'gbflgmylrpjqmpszlvut.supabase.co', // domain Supabase kamu
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
+      },
+      {
+        protocol: "https",
+        hostname: "gbflgmylrpjqmpszlvut.supabase.co",
+      },
     ],
   },
 };

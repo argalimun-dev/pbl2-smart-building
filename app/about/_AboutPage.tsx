@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-slate-100 py-16 px-6">
+    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-slate-100 py-16 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Judul */}
         <h1 className="text-3xl md:text-4xl font-bold text-center mb-6">
@@ -13,14 +13,14 @@ export default function AboutPage() {
         {/* Deskripsi */}
         <p className="text-lg text-gray-300 leading-relaxed">
           <strong>CV. Bangunan Cerdas Indonesia</strong> adalah konsultan dan kontraktor listrik berbasis <em>Project Based Learning</em> yang berfokus pada penerapan sistem integrasi bangunan cerdas. Situs ini dirancang untuk 
-          menampilkan, menyimpan, dan berbagi berbagai <em>Project</em> serta dokumentasi kegiatan 
-          terkait proyek Smart Building, dalam bentuk galeri digital yang interaktif.
+          menampilkan, menyimpan dan berbagi berbagai <em>Project</em> serta dokumentasi kegiatan 
+          terkait proyek Smart Building dalam bentuk galeri digital yang interaktif.
         </p>
 
         <p className="text-lg text-gray-300 leading-relaxed">
-          Setiap Project dapat dilihat secara detail, diberi komentar, dan menjadi bagian dari 
+          Setiap Project dapat dilihat secara detail, diberi komentar dan menjadi bagian dari 
           dokumentasi perkembangan proyek kami. Situs ini dibangun menggunakan teknologi modern 
-          seperti <strong>Next.js</strong>, <strong>Tailwind CSS</strong>, dan <strong>Vercel</strong> untuk memastikan performa optimal di berbagai perangkat.
+          seperti <strong>Next.js</strong>, <strong>Tailwind CSS</strong> dan <strong>Vercel</strong> untuk memastikan performa optimal di berbagai perangkat.
         </p>
 
         {/* Tim */}
@@ -37,7 +37,7 @@ export default function AboutPage() {
         <div className="text-center mt-10">
           <Link
             href="/memory"
-            className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl shadow-md transition-all duration-200"
+            className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 text-sm sm:text-base rounded-xl shadow-md transition-all duration-200"
           >
             ← Kembali ke Smart Project Wall
           </Link>

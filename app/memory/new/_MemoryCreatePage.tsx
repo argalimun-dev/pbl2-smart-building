@@ -1,5 +1,5 @@
 "use client";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -13,68 +13,91 @@ export default function NewMemoryPage() {
   const [secretCode, setSecretCode] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] || null;
 
-    if (!file) return alert("📸 Pilih gambar dulu!");
-    if (!title.trim()) return alert("✏️ Isi judul dulu!");
-    if (!uploader.trim()) return alert("👤 Isi nama pengunggah dulu!");
-    if (!secretCode.trim()) return alert("🔐 Masukkan kode rahasia dulu!");
+    if (selected) {
+      if (selected.size > 10 * 1024 * 1024) {
+        alert("⚠️ Ukuran file terlalu besar! Maksimal 10MB.");
+        return;
+      }
 
-    setLoading(true);
+      if (!selected.type.startsWith("image/")) {
+        alert("❌ File harus berupa gambar!");
+        return;
+      }
+    }
 
-    // 🔐 Cek validasi kode rahasia di Supabase
-    const { data: validCode, error: codeError } = await supabase
-      .from("access_codes")
-      .select("*")
-      .eq("code", secretCode.trim())
-      .single();
+    setFile(selected);
+  }, []);
 
-    if (codeError || !validCode) {
-      alert("🚫 Kode rahasia salah! Hanya tim tertentu yang bisa upload.");
+  const handleSubmit = useCallback(
+    async (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+
+      if (!file) return alert("📸 Pilih gambar dulu!");
+      if (!title.trim()) return alert("✏️ Isi judul dulu!");
+      if (!uploader.trim()) return alert("👤 Isi nama pengunggah dulu!");
+      if (!secretCode.trim()) return alert("🔐 Masukkan kode rahasia dulu!");
+
+      setLoading(true);
+
+      // VALIDASI KODE
+      const { data: validCode, error: codeError } = await supabase
+        .from("access_codes")
+        .select("*")
+        .ilike("code", secretCode.trim())
+        .single();
+
+      if (codeError || !validCode) {
+        alert("🚫 Kode rahasia salah!");
+        setLoading(false);
+        return;
+      }
+
+      // SANITASI NAMA FILE
+      const fileName = `${Date.now()}-${file.name
+        .toLowerCase()
+        .replace(/[^a-z0-9.\-_]/g, "_")}`;
+
+      // UPLOAD GAMBAR
+      const { error: uploadError } = await supabase.storage
+        .from("images")
+        .upload(fileName, file, { upsert: false });
+
+      if (uploadError) {
+        alert("❌ Gagal upload gambar!");
+        console.error(uploadError);
+        setLoading(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from("images").getPublicUrl(fileName);
+      const imageUrl = data?.publicUrl || "";
+
+      // SIMPAN DATABASE
+      const { error: insertError } = await supabase.from("memories").insert([
+        {
+          title,
+          description,
+          image_url: imageUrl,
+          uploader,
+        },
+      ]);
+
+      if (insertError) {
+        alert("❌ Gagal menyimpan ke database!");
+        console.error(insertError);
+      } else {
+        alert("✅ Berhasil menambahkan Project 🎉");
+        router.replace("/memory");
+        router.refresh();
+      }
+
       setLoading(false);
-      return;
-    }
-
-    const fileName = `${Date.now()}-${file.name}`;
-
-    // Upload ke Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from("images")
-      .upload(fileName, file);
-
-    if (uploadError) {
-      alert("❌ Gagal upload gambar!");
-      console.error(uploadError);
-      setLoading(false);
-      return;
-    }
-
-    // Ambil URL publik
-    const { data } = supabase.storage.from("images").getPublicUrl(fileName);
-    const imageUrl = data?.publicUrl;
-
-    // Simpan ke tabel memories
-    const { error: insertError } = await supabase.from("memories").insert([
-      {
-        title,
-        description,
-        image_url: imageUrl,
-        uploader,
-      },
-    ]);
-
-    if (insertError) {
-      alert("❌ Gagal menyimpan ke database!");
-      console.error(insertError);
-    } else {
-      alert("✅ Berhasil menambahkan Project 🎉");
-      router.push("/memory");
-      router.refresh();
-    }
-
-    setLoading(false);
-  };
+    },
+    [file, title, description, uploader, secretCode, router]
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-950 to-black text-gray-100 flex items-center justify-center px-4 py-10">
@@ -112,7 +135,7 @@ export default function NewMemoryPage() {
             />
           </div>
 
-          {/* File Gambar */}
+          {/* Gambar */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Unggah Gambar
@@ -120,16 +143,18 @@ export default function NewMemoryPage() {
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
-                         file:rounded-full file:border-0 
-                         file:text-sm file:font-semibold 
-                         file:bg-blue-100 file:text-blue-700 
-                         hover:file:bg-blue-200 cursor-pointer"
+              onChange={handleFileChange}
+              className="w-full text-sm text-gray-300 
+                file:mr-4 file:py-2 file:px-4 
+                file:rounded-lg file:border-0 
+                file:text-sm file:font-semibold 
+                file:bg-blue-100 file:text-blue-700 
+                hover:file:bg-blue-200 cursor-pointer
+                file:transition-all"
             />
           </div>
 
-          {/* Nama Pengunggah */}
+          {/* Uploader */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Nama Pengunggah
@@ -157,7 +182,6 @@ export default function NewMemoryPage() {
             />
           </div>
 
-          {/* Tombol Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -170,7 +194,7 @@ export default function NewMemoryPage() {
         <div className="flex justify-center items-center mt-6 text-sm">
           <button
             onClick={() => router.push("/memory")}
-            className="text-sm text-gray-600 hover:text-gray-800 underline"
+            className="text-sm text-gray-400 hover:text-gray-200 underline"
           >
             ← Kembali ke Smart Project Wall
           </button>

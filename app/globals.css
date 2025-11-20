@@ -3,33 +3,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========== GLOBAL RESET & BASE SETTINGS ========== */
+
 html,
 body {
   margin: 0;
   padding: 0;
   font-family: ui-sans-serif, system-ui, sans-serif;
 
-  /* 🌙 Dark theme background dan teks */
-  background: linear-gradient(to bottom, #0f172a, #020617);
+  /* Hindari gradient double-render (RootLayout sudah punya gradient) */
+  background: #020617;
   color: #e2e8f0;
 
   min-height: 100vh;
 
-  /* Haluskan font */
+  /* Smooth text rendering */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Prevent unwanted horizontal scroll */
+  overflow-x: hidden;
 }
 
+/* Default link behavior */
 a {
   color: inherit;
   text-decoration: none;
 }
 
-* {
+/* Box model stabilizer */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-/* ✨ Animasi Zoom untuk tampilan gambar */
+/* ========== ANIMATIONS ========== */
+
+/* Zoom In */
 @keyframes zoomIn {
   from {
     transform: scale(0.95);
@@ -44,6 +55,8 @@ a {
 .animate-zoomIn {
   animation: zoomIn 0.3s ease-out;
 }
+
+/* Fade In */
 @keyframes fadeIn {
   from {
     opacity: 0;
